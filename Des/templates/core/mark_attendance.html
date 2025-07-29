@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mark Attendance - {{ course.code }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-clipboard-check me-2"></i>Mark Attendance</h3>
+                    <p class="mb-0">{{ course.code }} - {{ course.title }} | {{ course.department.name }} Level {{ course.level.level_number }}</p>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post" id="attendance-form">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label for="attendance-date" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="attendance-date" name="date" value="{{ today|date:'Y-m-d' }}" required>
+                            </div>
+                            <div class="col-md-8 d-flex align-items-end">
+                                <a href="{% url 'qr_scanner' course.id %}" class="btn btn-success me-2">
+                                    <i class="fas fa-qrcode me-2"></i>QR Scanner
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Save Attendance
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover attendance-table">
+                                <thead>
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Matric Number</th>
+                                        <th>Department</th>
+                                        <th>Status</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in students %}
+                                    <tr data-student-id="{{ student.id }}">
+                                        <td>
+                                            <strong>{{ student.user.get_full_name }}</strong>
+                                        </td>
+                                        <td>{{ student.matric_number }}</td>
+                                        <td>{{ student.department.name }} Level {{ student.level.level_number }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="form-check me-3">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="status_{{ student.id }}" 
+                                                           value="present" 
+                                                           id="present_{{ student.id }}">
+                                                    <label class="form-check-label" for="present_{{ student.id }}">
+                                                        Present
+                                                    </label>
+                                                </div>
+                                                <div class="form-check me-3">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="status_{{ student.id }}" 
+                                                           value="absent" 
+                                                           id="absent_{{ student.id }}" checked>
+                                                    <label class="form-check-label" for="absent_{{ student.id }}">
+                                                        Absent
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="status_{{ student.id }}" 
+                                                           value="late" 
+                                                           id="late_{{ student.id }}">
+                                                    <label class="form-check-label" for="late_{{ student.id }}">
+                                                        Late
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <textarea class="form-control" name="notes_{{ student.id }}" 
+                                                      placeholder="Add notes (optional)" rows="2"></textarea>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusRadios = document.querySelectorAll('input[type="radio"]');
+    
+    // Update row styling based on status
+    statusRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const studentRow = this.closest('tr');
+            const status = this.value;
+            
+            // Remove all status classes
+            studentRow.classList.remove('table-success', 'table-danger', 'table-warning');
+            
+            // Add appropriate class
+            if (status === 'present') {
+                studentRow.classList.add('table-success');
+            } else if (status === 'absent') {
+                studentRow.classList.add('table-danger');
+            } else if (status === 'late') {
+                studentRow.classList.add('table-warning');
+            }
+        });
+    });
+    
+    // Form submission
+    document.getElementById('attendance-form').addEventListener('submit', function(e) {
+        const presentCount = document.querySelectorAll('input[value="present"]:checked').length;
+        const absentCount = document.querySelectorAll('input[value="absent"]:checked').length;
+        const lateCount = document.querySelectorAll('input[value="late"]:checked').length;
+        
+        if (presentCount + absentCount + lateCount === 0) {
+            e.preventDefault();
+            alert('Please mark attendance for at least one student');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+        submitBtn.disabled = true;
+        
+        // Re-enable after a delay (in case of error)
+        setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import authenticate
-from .models import User, Student, Lecturer, Course, Department, Level, Timetable, Attendance
+from .models import User, Student, Lecturer, Course, Department, Level, Timetable, Attendance, Admin
 
 class StudentRegistrationForm(UserCreationForm):
     first_name = forms.CharField(max_length=30, required=True)
@@ -158,4 +158,38 @@ class LecturerForm(forms.ModelForm):
         if commit:
             lecturer.save()
         
-        return lecturer 
+        return lecturer
+
+class AdminForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=30, required=True)
+    last_name = forms.CharField(max_length=30, required=True)
+    email = forms.EmailField(required=True)
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}), required=True)
+    
+    class Meta:
+        model = Admin
+        fields = ['admin_id', 'role']
+        widgets = {
+            'admin_id': forms.TextInput(attrs={'class': 'form-control'}),
+            'role': forms.Select(attrs={'class': 'form-control'}),
+        }
+    
+    def save(self, commit=True):
+        admin = super().save(commit=False)
+        
+        # Create user account
+        user = User.objects.create_user(
+            username=self.cleaned_data['email'],
+            email=self.cleaned_data['email'],
+            password=self.cleaned_data['password'],
+            first_name=self.cleaned_data['first_name'],
+            last_name=self.cleaned_data['last_name'],
+            user_type=self.cleaned_data['role']
+        )
+        
+        admin.user = user
+        
+        if commit:
+            admin.save()
+        
+        return admin

@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}QR Scanner - {{ course.code }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .qr-scanner-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .scanner-header {
+        background: linear-gradient(135deg, #2563eb, #1e40af);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .scanner-content {
+        padding: 2rem;
+    }
+    
+    #qr-video {
+        width: 100%;
+        max-width: 400px;
+        border-radius: 15px;
+        margin: 1rem auto;
+        display: block;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .scanner-overlay {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .scanner-frame {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        border: 3px solid #2563eb;
+        border-radius: 10px;
+        pointer-events: none;
+    }
+    
+    .scanner-frame::before {
+        content: '';
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        right: -3px;
+        bottom: -3px;
+        border: 2px solid transparent;
+        border-radius: 10px;
+        background: linear-gradient(45deg, #2563eb, #3b82f6, #2563eb);
+        background-size: 200% 200%;
+        animation: borderGlow 2s ease-in-out infinite;
+    }
+    
+    @keyframes borderGlow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    
+    .scan-status {
+        text-align: center;
+        margin: 1rem 0;
+        padding: 1rem;
+        border-radius: 10px;
+        font-weight: 500;
+    }
+    
+    .scan-status.scanning {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+    }
+    
+    .scan-status.success {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+    
+    .scan-status.error {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+    }
+    
+    .student-info {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-left: 4px solid #2563eb;
+    }
+    
+    .manual-fallback {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid #e5e7eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="qr-scanner-container">
+                <div class="scanner-header">
+                    <h2><i class="fas fa-qrcode me-2"></i>QR Code Scanner</h2>
+                    <p class="mb-0">Scan student QR codes to mark attendance for {{ course.code }} - {{ course.title }}</p>
+                </div>
+                
+                <div class="scanner-content">
+                    <div class="text-center mb-4">
+                        <div class="scan-status scanning" id="scan-status">
+                            <i class="fas fa-camera me-2"></i>
+                            <span id="status-text">Ready to scan...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="scanner-overlay">
+                            <video id="qr-video" autoplay playsinline></video>
+                            <div class="scanner-frame"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-primary me-2" id="start-scan">
+                            <i class="fas fa-play me-2"></i>Start Scanner
+                        </button>
+                        <button class="btn btn-secondary me-2" id="stop-scan">
+                            <i class="fas fa-stop me-2"></i>Stop Scanner
+                        </button>
+                        <button class="btn btn-success" id="switch-camera">
+                            <i class="fas fa-sync me-2"></i>Switch Camera
+                        </button>
+                    </div>
+                    
+                    <div id="student-info" class="student-info" style="display: none;">
+                        <h5><i class="fas fa-user me-2"></i>Student Information</h5>
+                        <div id="student-details"></div>
+                    </div>
+                    
+                    <div class="manual-fallback">
+                        <h5><i class="fas fa-keyboard me-2"></i>Manual Entry</h5>
+                        <p class="text-muted">If QR scanning is not working, you can manually mark attendance.</p>
+                        <a href="{% url 'mark_attendance' course.id %}" class="btn btn-outline-primary">
+                            <i class="fas fa-edit me-2"></i>Manual Attendance
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+let video = null;
+let canvas = null;
+let context = null;
+let scanning = false;
+let currentCamera = 0;
+let cameras = [];
+
+// Initialize QR Scanner
+document.addEventListener('DOMContentLoaded', function() {
+    video = document.getElementById('qr-video');
+    canvas = document.createElement('canvas');
+    context = canvas.getContext('2d');
+    
+    // Get available cameras
+    navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+            cameras = devices.filter(device => device.kind === 'videoinput');
+            console.log('Available cameras:', cameras.length);
+        });
+    
+    // Event listeners
+    document.getElementById('start-scan').addEventListener('click', startScanner);
+    document.getElementById('stop-scan').addEventListener('click', stopScanner);
+    document.getElementById('switch-camera').addEventListener('click', switchCamera);
+});
+
+function startScanner() {
+    if (scanning) return;
+    
+    const constraints = {
+        video: {
+            facingMode: currentCamera === 0 ? 'environment' : 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+        }
+    };
+    
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+            video.srcObject = stream;
+            scanning = true;
+            updateStatus('Scanning...', 'scanning');
+            scanQR();
+        })
+        .catch(err => {
+            console.error('Error accessing camera:', err);
+            updateStatus('Camera access denied', 'error');
+        });
+}
+
+function stopScanner() {
+    if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+    }
+    scanning = false;
+    updateStatus('Scanner stopped', 'scanning');
+}
+
+function switchCamera() {
+    currentCamera = (currentCamera + 1) % Math.max(cameras.length, 2);
+    if (scanning) {
+        stopScanner();
+        setTimeout(startScanner, 500);
+    }
+}
+
+function scanQR() {
+    if (!scanning) return;
+    
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        
+        if (code) {
+            processQRCode(code.data);
+        }
+    }
+    
+    requestAnimationFrame(scanQR);
+}
+
+function processQRCode(qrData) {
+    console.log('QR Code detected:', qrData);
+    
+    // Send to server for processing
+    fetch(`{% url 'process_qr_scan' course.id %}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ qr_data: qrData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateStatus(data.message, 'success');
+            showStudentInfo(data);
+            stopScanner();
+        } else {
+            updateStatus(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error processing QR code:', error);
+        updateStatus('Error processing QR code', 'error');
+    });
+}
+
+function updateStatus(message, type) {
+    const statusElement = document.getElementById('scan-status');
+    const statusText = document.getElementById('status-text');
+    
+    statusElement.className = `scan-status ${type}`;
+    statusText.textContent = message;
+}
+
+function showStudentInfo(data) {
+    const studentInfo = document.getElementById('student-info');
+    const studentDetails = document.getElementById('student-details');
+    
+    studentDetails.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Name:</strong> ${data.student_name}
+            </div>
+            <div class="col-md-6">
+                <strong>Matric Number:</strong> ${data.matric_number}
+            </div>
+        </div>
+    `;
+    
+    studentInfo.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        studentInfo.style.display = 'none';
+    }, 5000);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
