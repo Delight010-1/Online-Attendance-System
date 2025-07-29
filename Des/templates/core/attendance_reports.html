@@ -1,0 +1,554 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Attendance Reports{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 20px;
+        padding: 25px;
+        color: white;
+        margin-bottom: 30px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    }
+    
+    .filter-section {
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .report-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .report-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        border-color: var(--primary-color);
+    }
+    
+    .report-header {
+        background: var(--primary-color);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 20px;
+    }
+    
+    .stats-row {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .attendance-table {
+        font-size: 0.9rem;
+    }
+    
+    .status-badge {
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+    
+    .status-present {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .status-absent {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .status-late {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .export-btn {
+        border-radius: 25px;
+        padding: 10px 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .print-preview {
+        background: white;
+        border-radius: 10px;
+        padding: 30px;
+        margin-top: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        .print-preview {
+            box-shadow: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background: white !important;
+        }
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 50px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5 pt-4">
+    <!-- Header -->
+    <div class="row mb-4 no-print">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-1">
+                                <i class="fas fa-chart-bar text-primary me-2"></i>
+                                Attendance Reports
+                            </h2>
+                            <p class="text-muted mb-0">Generate and export attendance reports</p>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-success export-btn" onclick="exportToExcel()">
+                                <i class="fas fa-file-excel me-2"></i>Export Excel
+                            </button>
+                            <button class="btn btn-danger export-btn" onclick="exportToPDF()">
+                                <i class="fas fa-file-pdf me-2"></i>Export PDF
+                            </button>
+                            <button class="btn btn-info export-btn" onclick="window.print()">
+                                <i class="fas fa-print me-2"></i>Print Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-card no-print">
+        <h4 class="mb-3">
+            <i class="fas fa-filter me-2"></i>Filter Reports
+        </h4>
+        <form method="get" id="filterForm">
+            <div class="filter-section">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="form-floating">
+                            <select class="form-select" name="department" id="department">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                    <option value="{{ dept.id }}" {% if filters.department_id == dept.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ dept.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <label for="department">Department</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-floating">
+                            <select class="form-select" name="level" id="level">
+                                <option value="">All Levels</option>
+                                {% for level in levels %}
+                                    <option value="{{ level.id }}" {% if filters.level_id == level.id|stringformat:"s" %}selected{% endif %}>
+                                        Level {{ level.level_number }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <label for="level">Level</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-floating">
+                            <select class="form-select" name="course" id="course">
+                                <option value="">All Courses</option>
+                                {% for course in courses %}
+                                    <option value="{{ course.id }}" {% if filters.course_id == course.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ course.code }} - {{ course.title }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <label for="course">Course</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-light w-100 h-100">
+                            <i class="fas fa-search me-2"></i>Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-floating">
+                            <input type="date" class="form-control" name="date_from" id="date_from" 
+                                   value="{{ filters.date_from }}">
+                            <label for="date_from">From Date</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-floating">
+                            <input type="date" class="form-control" name="date_to" id="date_to" 
+                                   value="{{ filters.date_to }}">
+                            <label for="date_to">To Date</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-outline-light w-100 h-100" onclick="clearFilters()">
+                            <i class="fas fa-times me-2"></i>Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Report Statistics -->
+    {% if attendance_records %}
+    <div class="stats-row no-print">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-primary">{{ attendance_records.count }}</div>
+                    <div class="stat-label">Total Records</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-success">
+                        {% with present_count=attendance_records|dictsort:"status"|slice:":1"|length %}
+                            {{ present_count|default:0 }}
+                        {% endwith %}
+                    </div>
+                    <div class="stat-label">Present</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-warning">
+                        {% with late_count=attendance_records|dictsort:"status"|slice:"1:2"|length %}
+                            {{ late_count|default:0 }}
+                        {% endwith %}
+                    </div>
+                    <div class="stat-label">Late</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-item">
+                    <div class="stat-number text-danger">
+                        {% with absent_count=attendance_records|dictsort:"status"|slice:"2:"|length %}
+                            {{ absent_count|default:0 }}
+                        {% endwith %}
+                    </div>
+                    <div class="stat-label">Absent</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Report Content -->
+    <div class="report-card">
+        <div class="report-header">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h4 class="mb-1">
+                        <i class="fas fa-graduation-cap me-2"></i>
+                        University Attendance System
+                    </h4>
+                    <p class="mb-0 opacity-75">Attendance Report Generated on {{ "now"|date:"F d, Y g:i A" }}</p>
+                </div>
+                <div class="col-lg-4 text-end">
+                    <div class="badge bg-white text-primary fs-6 p-2">
+                        {% if filters.date_from and filters.date_to %}
+                            {{ filters.date_from }} to {{ filters.date_to }}
+                        {% else %}
+                            All Time
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            {% if attendance_records %}
+                <div class="table-responsive">
+                    <table class="table attendance-table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="20%">Student</th>
+                                <th width="15%">Matric Number</th>
+                                <th width="20%">Course</th>
+                                <th width="15%">Date</th>
+                                <th width="10%">Status</th>
+                                <th width="15%">Marked By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in attendance_records %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm me-2">
+                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                                                 style="width: 30px; height: 30px; font-size: 0.8rem;">
+                                                {{ record.student.user.first_name|first }}{{ record.student.user.last_name|first }}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold">{{ record.student.user.get_full_name }}</div>
+                                            <small class="text-muted">{{ record.student.department.code }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="fw-medium">{{ record.student.matric_number }}</td>
+                                <td>
+                                    <div>
+                                        <span class="fw-semibold">{{ record.course.code }}</span>
+                                        <div class="small text-muted">{{ record.course.title|truncatechars:30 }}</div>
+                                    </div>
+                                </td>
+                                <td>{{ record.date|date:"M d, Y" }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ record.status }}">
+                                        {% if record.status == 'present' %}
+                                            <i class="fas fa-check me-1"></i>Present
+                                        {% elif record.status == 'late' %}
+                                            <i class="fas fa-clock me-1"></i>Late
+                                        {% else %}
+                                            <i class="fas fa-times me-1"></i>Absent
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="small">
+                                        {{ record.marked_by.user.get_full_name }}
+                                        <div class="text-muted">{{ record.marked_at|date:"g:i A" }}</div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center mt-4 no-print">
+                    <div class="text-muted">
+                        Showing {{ attendance_records|length }} of {{ attendance_records.count }} records
+                    </div>
+                    <!-- Add pagination here if needed -->
+                </div>
+                
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-chart-line-down"></i>
+                    <h4>No Attendance Records Found</h4>
+                    <p>Try adjusting your filters to find attendance records.</p>
+                    <button class="btn btn-primary" onclick="clearFilters()">
+                        <i class="fas fa-refresh me-2"></i>Clear All Filters
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Summary Section for Print -->
+    {% if attendance_records %}
+    <div class="print-only" style="display: none;">
+        <div class="mt-4 pt-4 border-top">
+            <h5>Report Summary</h5>
+            <div class="row">
+                <div class="col-6">
+                    <p><strong>Total Students:</strong> {{ attendance_records|regroup:"student"|length }}</p>
+                    <p><strong>Date Range:</strong> 
+                        {% if filters.date_from and filters.date_to %}
+                            {{ filters.date_from }} to {{ filters.date_to }}
+                        {% else %}
+                            All Time
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-6">
+                    <p><strong>Generated By:</strong> {{ request.user.get_full_name }}</p>
+                    <p><strong>Generated On:</strong> {{ "now"|date:"F d, Y g:i A" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function clearFilters() {
+    document.getElementById('department').value = '';
+    document.getElementById('level').value = '';
+    document.getElementById('course').value = '';
+    document.getElementById('date_from').value = '';
+    document.getElementById('date_to').value = '';
+    document.getElementById('filterForm').submit();
+}
+
+function exportToExcel() {
+    // Get current URL with filters
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('export', 'excel');
+    
+    // Create temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = currentUrl.toString();
+    link.download = 'attendance_report.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Show loading message
+    showMessage('Generating Excel file...', 'info');
+}
+
+function exportToPDF() {
+    // Get current URL with filters
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('export', 'pdf');
+    
+    // Open in new window for PDF generation
+    window.open(currentUrl.toString(), '_blank');
+    
+    showMessage('Generating PDF file...', 'info');
+}
+
+function showMessage(message, type = 'info') {
+    // Create toast notification
+    const toastHTML = `
+        <div class="toast align-items-center text-bg-${type} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                        data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    // Add to toast container (create if doesn't exist)
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Initialize and show toast
+    const toastEl = toastContainer.lastElementChild;
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+    
+    // Remove toast element after it's hidden
+    toastEl.addEventListener('hidden.bs.toast', () => {
+        toastEl.remove();
+    });
+}
+
+// Auto-filter when date inputs change
+document.getElementById('date_from').addEventListener('change', function() {
+    if (this.value && document.getElementById('date_to').value) {
+        document.getElementById('filterForm').submit();
+    }
+});
+
+document.getElementById('date_to').addEventListener('change', function() {
+    if (this.value && document.getElementById('date_from').value) {
+        document.getElementById('filterForm').submit();
+    }
+});
+
+// Print styles
+window.addEventListener('beforeprint', function() {
+    document.querySelector('.print-only').style.display = 'block';
+});
+
+window.addEventListener('afterprint', function() {
+    document.querySelector('.print-only').style.display = 'none';
+});
+
+// Add animation to report card
+document.addEventListener('DOMContentLoaded', function() {
+    const reportCard = document.querySelector('.report-card');
+    if (reportCard) {
+        reportCard.style.opacity = '0';
+        reportCard.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            reportCard.style.transition = 'all 0.6s ease';
+            reportCard.style.opacity = '1';
+            reportCard.style.transform = 'translateY(0)';
+        }, 300);
+    }
+});
+</script>
+{% endblock %}

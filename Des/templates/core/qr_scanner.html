@@ -1,0 +1,462 @@
+{% extends 'base.html' %}
+
+{% block title %}QR Scanner - {{ course.code }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .scanner-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    }
+    
+    .video-container {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        background: #000;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    #video {
+        width: 100%;
+        height: 400px;
+        object-fit: cover;
+    }
+    
+    .scanner-overlay {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        border: 3px solid #00ff88;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.5); }
+        50% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.8); }
+        100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.5); }
+    }
+    
+    .scanner-status {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 25px;
+        text-align: center;
+        font-weight: 500;
+    }
+    
+    .scan-result {
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 20px;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .scan-result.success {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+    
+    .scan-result.error {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+    
+    .student-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .student-avatar {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.5rem;
+    }
+    
+    .control-btn {
+        border-radius: 25px;
+        padding: 12px 24px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .attendance-log {
+        max-height: 300px;
+        overflow-y: auto;
+        background: rgba(255,255,255,0.1);
+        border-radius: 15px;
+        padding: 15px;
+    }
+    
+    .log-item {
+        background: rgba(255,255,255,0.9);
+        border-radius: 10px;
+        padding: 10px 15px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        animation: slideIn 0.5s ease;
+    }
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-1">
+                                <i class="fas fa-qrcode text-primary me-2"></i>
+                                QR Code Scanner
+                            </h2>
+                            <p class="text-muted mb-0">
+                                <strong>{{ course.code }} - {{ course.title }}</strong><br>
+                                <small>{{ course.department.name }} | Level {{ course.level.level_number }}</small>
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <div class="badge bg-success fs-6 p-2">
+                                <i class="fas fa-calendar me-1"></i>Today's Class
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Scanner Section -->
+        <div class="col-lg-8">
+            <div class="scanner-container">
+                <h4 class="text-white mb-3 text-center">
+                    <i class="fas fa-video me-2"></i>Live Scanner
+                </h4>
+                
+                <div class="video-container">
+                    <video id="video" autoplay muted playsinline></video>
+                    <div class="scanner-overlay"></div>
+                    <div class="scanner-status" id="scannerStatus">
+                        <i class="fas fa-search me-2"></i>Ready to scan QR codes...
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <button id="startScanBtn" class="btn btn-success control-btn me-2">
+                        <i class="fas fa-play me-2"></i>Start Scanning
+                    </button>
+                    <button id="stopScanBtn" class="btn btn-danger control-btn me-2" disabled>
+                        <i class="fas fa-stop me-2"></i>Stop Scanning
+                    </button>
+                    <a href="{% url 'mark_attendance' course.id %}" class="btn btn-info control-btn">
+                        <i class="fas fa-clipboard-check me-2"></i>Manual Entry
+                    </a>
+                </div>
+                
+                <!-- Scan Result Display -->
+                <div id="scanResult" class="scan-result d-none">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Attendance Log -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-check text-primary me-2"></i>
+                        Today's Attendance
+                        <span class="badge bg-primary ms-2" id="attendanceCount">0</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="attendance-log" id="attendanceLog">
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                            <p class="mb-0">No attendance marked yet.<br>Start scanning QR codes!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-0 text-center">
+                    <a href="{% url 'lecturer_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden canvas for QR code processing -->
+<canvas id="qrCanvas" style="display: none;"></canvas>
+{% endblock %}
+
+{% block extra_js %}
+<!-- QR Code Library -->
+<script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+
+<script>
+class AttendanceQRScanner {
+    constructor() {
+        this.video = document.getElementById('video');
+        this.canvas = document.getElementById('qrCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.scanner = null;
+        this.isScanning = false;
+        this.attendanceCount = 0;
+        
+        this.init();
+    }
+    
+    async init() {
+        try {
+            // Request camera permission
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' } 
+            });
+            this.video.srcObject = stream;
+            
+            // Initialize QR scanner
+            this.scanner = new QrScanner(
+                this.video,
+                result => this.handleScanResult(result),
+                {
+                    highlightScanRegion: true,
+                    highlightCodeOutline: true,
+                }
+            );
+            
+            this.updateStatus('Camera ready. Click "Start Scanning" to begin.', 'success');
+            
+        } catch (error) {
+            console.error('Camera access error:', error);
+            this.updateStatus('Camera access denied. Please enable camera permissions.', 'error');
+        }
+        
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        document.getElementById('startScanBtn').addEventListener('click', () => this.startScanning());
+        document.getElementById('stopScanBtn').addEventListener('click', () => this.stopScanning());
+    }
+    
+    async startScanning() {
+        if (!this.scanner || this.isScanning) return;
+        
+        try {
+            await this.scanner.start();
+            this.isScanning = true;
+            
+            document.getElementById('startScanBtn').disabled = true;
+            document.getElementById('stopScanBtn').disabled = false;
+            
+            this.updateStatus('Scanning for QR codes...', 'scanning');
+            
+        } catch (error) {
+            console.error('Scanner start error:', error);
+            this.updateStatus('Failed to start scanner. Please try again.', 'error');
+        }
+    }
+    
+    stopScanning() {
+        if (!this.scanner || !this.isScanning) return;
+        
+        this.scanner.stop();
+        this.isScanning = false;
+        
+        document.getElementById('startScanBtn').disabled = false;
+        document.getElementById('stopScanBtn').disabled = true;
+        
+        this.updateStatus('Scanning stopped.', 'info');
+    }
+    
+    async handleScanResult(result) {
+        if (!this.isScanning) return;
+        
+        // Temporary stop to prevent multiple scans
+        this.stopScanning();
+        
+        try {
+            const response = await fetch(`/lecturer/process-qr/{{ course.id }}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ qr_data: result.data })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showScanResult({
+                    success: true,
+                    studentName: data.student_name,
+                    matricNumber: data.matric_number,
+                    message: data.message
+                });
+                
+                this.addToAttendanceLog(data.student_name, data.matric_number);
+                this.updateStatus('Student marked present successfully!', 'success');
+                
+            } else {
+                this.showScanResult({
+                    success: false,
+                    message: data.message
+                });
+                this.updateStatus(data.message, 'error');
+            }
+            
+        } catch (error) {
+            console.error('Processing error:', error);
+            this.showScanResult({
+                success: false,
+                message: 'Network error. Please try again.'
+            });
+            this.updateStatus('Network error occurred.', 'error');
+        }
+        
+        // Auto restart scanning after 3 seconds
+        setTimeout(() => {
+            if (!this.isScanning) {
+                this.startScanning();
+            }
+        }, 3000);
+    }
+    
+    showScanResult(result) {
+        const resultDiv = document.getElementById('scanResult');
+        resultDiv.className = `scan-result ${result.success ? 'success' : 'error'}`;
+        
+        if (result.success) {
+            const initials = result.studentName.split(' ').map(n => n[0]).join('');
+            resultDiv.innerHTML = `
+                <div class="student-info">
+                    <div class="student-avatar">${initials}</div>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1 text-success">
+                            <i class="fas fa-check-circle me-2"></i>Success!
+                        </h5>
+                        <h6 class="mb-1">${result.studentName}</h6>
+                        <small class="text-muted">${result.matricNumber}</small>
+                        <p class="mb-0 mt-2 text-success">${result.message}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                    <h5 class="text-danger">Scan Failed</h5>
+                    <p class="mb-0">${result.message}</p>
+                </div>
+            `;
+        }
+        
+        resultDiv.classList.remove('d-none');
+        
+        // Hide after 5 seconds
+        setTimeout(() => {
+            resultDiv.classList.add('d-none');
+        }, 5000);
+    }
+    
+    addToAttendanceLog(studentName, matricNumber) {
+        const logContainer = document.getElementById('attendanceLog');
+        const timestamp = new Date().toLocaleTimeString();
+        
+        // Clear empty state if this is first entry
+        if (this.attendanceCount === 0) {
+            logContainer.innerHTML = '';
+        }
+        
+        const logItem = document.createElement('div');
+        logItem.className = 'log-item';
+        logItem.innerHTML = `
+            <div>
+                <strong>${studentName}</strong><br>
+                <small class="text-muted">${matricNumber}</small>
+            </div>
+            <div class="text-end">
+                <small class="text-success">${timestamp}</small><br>
+                <i class="fas fa-check-circle text-success"></i>
+            </div>
+        `;
+        
+        logContainer.insertBefore(logItem, logContainer.firstChild);
+        
+        this.attendanceCount++;
+        document.getElementById('attendanceCount').textContent = this.attendanceCount;
+    }
+    
+    updateStatus(message, type = 'info') {
+        const statusEl = document.getElementById('scannerStatus');
+        
+        const icons = {
+            success: 'fas fa-check-circle',
+            error: 'fas fa-exclamation-triangle',
+            scanning: 'fas fa-search',
+            info: 'fas fa-info-circle'
+        };
+        
+        statusEl.innerHTML = `<i class="${icons[type] || icons.info} me-2"></i>${message}`;
+    }
+}
+
+// Initialize scanner when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Add CSRF token to page for AJAX requests
+    if (!document.querySelector('[name=csrfmiddlewaretoken]')) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = '{{ csrf_token }}';
+        document.body.appendChild(csrfInput);
+    }
+    
+    const scanner = new AttendanceQRScanner();
+});
+
+// Handle page visibility changes
+document.addEventListener('visibilitychange', function() {
+    // Note: Scanner management on visibility change can be added here
+});
+</script>
+{% endblock %}

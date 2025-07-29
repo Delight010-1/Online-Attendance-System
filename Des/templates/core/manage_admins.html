@@ -1,0 +1,480 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Manage Administrators{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-card {
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        border-radius: 15px;
+        background: white;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    }
+    
+    .admin-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--primary-color);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    
+    .admin-avatar {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .role-badge {
+        border-radius: 20px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .role-admin {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .role-super-admin {
+        background: linear-gradient(135deg, #ff6b6b, #ffa500);
+        color: white;
+    }
+    
+    .admin-form-container {
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .form-section {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .stats-overview {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 20px;
+        padding: 25px;
+        color: white;
+        margin-bottom: 30px;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .admin-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .action-btn {
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 50px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5 pt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="mb-1">
+                                <i class="fas fa-user-shield text-primary me-2"></i>
+                                Manage Administrators
+                            </h2>
+                            <p class="text-muted mb-0">Create and manage system administrators</p>
+                        </div>
+                        <div>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
+                                <i class="fas fa-plus me-2"></i>Add New Admin
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="stats-overview">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="stat-item">
+                    <div class="stat-number">{{ admins.count }}</div>
+                    <div class="stat-label">Total Administrators</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-item">
+                    <div class="stat-number">
+                        {% for admin in admins %}
+                            {% if admin.role == 'super_admin' %}1{% endif %}
+                        {% endfor %}
+                    </div>
+                    <div class="stat-label">Super Administrators</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-item">
+                    <div class="stat-number">
+                        {% for admin in admins %}
+                            {% if admin.role == 'admin' %}1{% endif %}
+                        {% endfor %}
+                    </div>
+                    <div class="stat-label">Regular Administrators</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Administrators List -->
+    <div class="row">
+        {% for admin in admins %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="admin-card p-4 h-100">
+                <div class="text-center">
+                    <div class="admin-avatar mx-auto">
+                        {{ admin.user.first_name|first }}{{ admin.user.last_name|first }}
+                    </div>
+                    <h5 class="mb-2">{{ admin.user.get_full_name }}</h5>
+                    <p class="text-muted mb-2">{{ admin.user.email }}</p>
+                    <span class="role-badge role-{{ admin.role }}">
+                        {% if admin.role == 'super_admin' %}
+                            <i class="fas fa-crown me-1"></i>Super Admin
+                        {% else %}
+                            <i class="fas fa-user-shield me-1"></i>Admin
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <small class="text-muted">Admin ID</small>
+                            <div class="fw-bold">{{ admin.admin_id }}</div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Joined</small>
+                            <div class="fw-bold">{{ admin.user.date_joined|date:"M Y" }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if admin.role != 'super_admin' or request.user.admin_profile.role == 'super_admin' %}
+                <div class="admin-actions mt-3 justify-content-center">
+                    <button class="btn btn-outline-primary action-btn" 
+                            onclick="editAdmin('{{ admin.id }}', '{{ admin.user.get_full_name }}', '{{ admin.user.email }}', '{{ admin.role }}')">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </button>
+                    {% if admin.id != request.user.admin_profile.id %}
+                    <button class="btn btn-outline-danger action-btn" 
+                            onclick="confirmDelete('{{ admin.id }}', '{{ admin.user.get_full_name }}')">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="empty-state">
+                <i class="fas fa-user-shield"></i>
+                <h4>No Administrators Found</h4>
+                <p>Get started by adding your first administrator account.</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
+                    <i class="fas fa-plus me-2"></i>Add First Admin
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Admin Modal -->
+<div class="modal fade" id="addAdminModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Add New Administrator
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="admin-form-container">
+                    <form id="addAdminForm" method="post">
+                        {% csrf_token %}
+                        <div class="form-section">
+                            <h6 class="mb-3">
+                                <i class="fas fa-user me-2"></i>Personal Information
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-floating mb-3">
+                                        <input type="text" class="form-control" id="firstName" name="first_name" required>
+                                        <label for="firstName">First Name</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating mb-3">
+                                        <input type="text" class="form-control" id="lastName" name="last_name" required>
+                                        <label for="lastName">Last Name</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <input type="email" class="form-control" id="email" name="email" required>
+                                <label for="email">Email Address</label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-section">
+                            <h6 class="mb-3">
+                                <i class="fas fa-shield-alt me-2"></i>Account Settings
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-floating mb-3">
+                                        <input type="text" class="form-control" id="adminId" name="admin_id" required>
+                                        <label for="adminId">Admin ID</label>
+                                        <small class="text-muted">Unique identifier for admin login</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating mb-3">
+                                        <select class="form-select" id="role" name="role" required>
+                                            <option value="">Choose role...</option>
+                                            <option value="admin">Administrator</option>
+                                            <option value="super_admin">Super Administrator</option>
+                                        </select>
+                                        <label for="role">Role</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <label for="password">Password</label>
+                                <small class="text-muted">Minimum 8 characters</small>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required>
+                                <label for="confirmPassword">Confirm Password</label>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Role Permissions:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li><strong>Administrator:</strong> Can manage courses, students, lecturers, and view reports</li>
+                                <li><strong>Super Administrator:</strong> All admin permissions plus ability to manage other admins</li>
+                            </ul>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addAdminForm" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>Create Administrator
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Admin Modal -->
+<div class="modal fade" id="editAdminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-edit me-2"></i>Edit Administrator
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editAdminForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" id="editAdminId" name="admin_id">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="editFirstName" name="first_name" required>
+                        <label for="editFirstName">First Name</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="editLastName" name="last_name" required>
+                        <label for="editLastName">Last Name</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control" id="editEmail" name="email" required>
+                        <label for="editEmail">Email Address</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <select class="form-select" id="editRole" name="role" required>
+                            <option value="admin">Administrator</option>
+                            <option value="super_admin">Super Administrator</option>
+                        </select>
+                        <label for="editRole">Role</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="editAdminForm" class="btn btn-warning">
+                    <i class="fas fa-save me-2"></i>Update Administrator
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the administrator account for <strong id="deleteAdminName"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-warning me-2"></i>
+                    This action cannot be undone. The admin will lose access to the system immediately.
+                </div>
+                <form id="deleteAdminForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" id="deleteAdminId" name="delete_admin_id">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="deleteAdminForm" class="btn btn-danger">
+                    <i class="fas fa-trash me-2"></i>Delete Administrator
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editAdmin(id, fullName, email, role) {
+    const nameParts = fullName.split(' ');
+    document.getElementById('editAdminId').value = id;
+    document.getElementById('editFirstName').value = nameParts[0] || '';
+    document.getElementById('editLastName').value = nameParts.slice(1).join(' ') || '';
+    document.getElementById('editEmail').value = email;
+    document.getElementById('editRole').value = role;
+    
+    new bootstrap.Modal(document.getElementById('editAdminModal')).show();
+}
+
+function confirmDelete(id, name) {
+    document.getElementById('deleteAdminId').value = id;
+    document.getElementById('deleteAdminName').textContent = name;
+    
+    new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+}
+
+// Form validation
+document.getElementById('addAdminForm').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('Passwords do not match!');
+        return false;
+    }
+    
+    if (password.length < 8) {
+        e.preventDefault();
+        alert('Password must be at least 8 characters long!');
+        return false;
+    }
+});
+
+// Auto-generate admin ID
+document.getElementById('firstName').addEventListener('input', generateAdminId);
+document.getElementById('lastName').addEventListener('input', generateAdminId);
+
+function generateAdminId() {
+    const firstName = document.getElementById('firstName').value.toLowerCase();
+    const lastName = document.getElementById('lastName').value.toLowerCase();
+    
+    if (firstName && lastName) {
+        const adminId = `${firstName.substring(0, 3)}${lastName.substring(0, 3)}${Math.floor(Math.random() * 1000)}`.toUpperCase();
+        document.getElementById('adminId').value = adminId;
+    }
+}
+
+// Add animations on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.admin-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}
