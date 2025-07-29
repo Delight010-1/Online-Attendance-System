@@ -1,41 +1,84 @@
 #!/bin/bash
 
-echo "Starting University Attendance System..."
-echo "======================================"
+echo "🚀 Starting University Attendance System..."
+echo "=========================================="
 
-# Check if Python is available
+# Check if Python is installed
 if ! command -v python3 &> /dev/null; then
-    echo "Error: Python3 is not installed or not in PATH"
+    echo "❌ Python3 is not installed. Please install Python 3.8+ first."
     exit 1
 fi
 
-# Check if we're in the right directory
-if [ ! -f "manage.py" ]; then
-    echo "Error: manage.py not found. Please run this script from the Des directory."
-    exit 1
-fi
+# Navigate to project directory
+cd /workspace/Des
 
-# Install dependencies if needed
-echo "Checking dependencies..."
-pip3 install -r requirements.txt --break-system-packages --quiet
+# Install dependencies if requirements.txt exists
+if [ -f "requirements.txt" ]; then
+    echo "📦 Installing dependencies..."
+    pip3 install -r requirements.txt --break-system-packages
+fi
 
 # Run migrations
-echo "Running database migrations..."
-python3 manage.py makemigrations --noinput
-python3 manage.py migrate --noinput
+echo "🗄️  Running database migrations..."
+python3 manage.py makemigrations
+python3 manage.py migrate
+
+# Populate sample data
+echo "📊 Populating sample data..."
+python3 manage.py populate_sample_data
+
+# Get IP addresses
+echo "🌐 Getting network information..."
+HOST_IPS=$(hostname -I)
+echo "Available IP addresses: $HOST_IPS"
+
+echo ""
+echo "🎯 STARTING SERVER..."
+echo "====================="
+echo "Server will be available at:"
+echo ""
+echo "📍 Local access:"
+echo "   http://localhost:8000"
+echo "   http://127.0.0.1:8000"
+echo ""
+echo "📍 Network access:"
+for ip in $HOST_IPS; do
+    echo "   http://$ip:8000"
+done
+echo ""
+echo "🔑 Login Credentials:"
+echo "====================="
+echo "Super Admin:"
+echo "   Username: superadmin@university.com"
+echo "   Password: superadmin123"
+echo ""
+echo "Regular Admin:"
+echo "   Username: admin@university.com"
+echo "   Password: admin123"
+echo ""
+echo "Lecturer:"
+echo "   Username: lecturer@university.com"
+echo "   Password: lecturer123"
+echo ""
+echo "Student:"
+echo "   Username: student@university.com"
+echo "   Password: student123"
+echo ""
+echo "📱 Available URLs:"
+echo "=================="
+echo "• Home Page: http://localhost:8000/"
+echo "• Login Portal: http://localhost:8000/login/"
+echo "• Student Login: http://localhost:8000/student/login/"
+echo "• Lecturer Login: http://localhost:8000/lecturer/login/"
+echo "• Admin Login: http://localhost:8000/admin/login/"
+echo "• Student Registration: http://localhost:8000/student/register/"
+echo ""
+echo "⚠️  IMPORTANT: If you can't access localhost, try the network IPs above"
+echo "💡 If using Docker/Container: Use the network IP addresses shown above"
+echo "🔧 To stop the server: Press Ctrl+C"
+echo ""
+echo "🚀 Starting Django development server..."
+echo "======================================"
 
 # Start the server
-echo "Starting development server..."
-echo "Access the application at: http://localhost:8000"
-echo ""
-echo "Login Credentials:"
-echo "=================="
-echo "Super Admin: superadmin / admin123"
-echo "Regular Admin: admin@university.com / admin123"
-echo "Lecturer: lecturer1 / lecturer123"
-echo "Student: alice.johnson@student.university.com / student123"
-echo ""
-echo "Press Ctrl+C to stop the server"
-echo ""
-
 python3 manage.py runserver 0.0.0.0:8000
