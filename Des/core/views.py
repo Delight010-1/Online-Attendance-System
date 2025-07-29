@@ -483,3 +483,6 @@ def attendance_reports(request):
         }
     }
     return render(request, 'core/attendance_reports.html', context)
+
+def login_portal(request):
+    return render(request, 'core/login_portal.html')
