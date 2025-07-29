@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}Timetable{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="page-header mb-4">
+                <h2 class="text-gradient">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    My Timetable
+                </h2>
+                <p class="text-muted">View your complete class schedule</p>
+            </div>
+
+            <!-- Student Info Card -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-user-graduate me-2"></i>Student Information</h5>
+                            <p><strong>Name:</strong> {{ student.user.get_full_name }}</p>
+                            <p><strong>Matric Number:</strong> {{ student.matric_number }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Department:</strong> {{ student.department.name }}</p>
+                            <p><strong>Level:</strong> {{ student.level.name }}</p>
+                            <p><strong>Total Classes:</strong> {{ timetable|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timetable -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-week me-2"></i>
+                        Weekly Schedule
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if timetable %}
+                        <div class="timetable-container">
+                            {% for day in "monday,tuesday,wednesday,thursday,friday,saturday,sunday"|split:"," %}
+                                <div class="day-section mb-4">
+                                    <h6 class="day-header">
+                                        <i class="fas fa-calendar-day me-2"></i>
+                                        {{ day|title }}
+                                    </h6>
+                                    <div class="day-classes">
+                                        {% for class in timetable %}
+                                            {% if class.day == day %}
+                                                <div class="timetable-card">
+                                                    <div class="row align-items-center">
+                                                        <div class="col-md-2">
+                                                            <div class="time-slot">
+                                                                <strong>{{ class.start_time|time:"H:i" }}</strong>
+                                                                <br>
+                                                                <small class="text-muted">{{ class.end_time|time:"H:i" }}</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="course-info">
+                                                                <h6 class="course-title">{{ class.course.title }}</h6>
+                                                                <p class="course-code">{{ class.course.code }}</p>
+                                                                <p class="lecturer-name">
+                                                                    <i class="fas fa-chalkboard-teacher me-1"></i>
+                                                                    {{ class.course.lecturer.user.get_full_name }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4 text-end">
+                                                            <div class="course-badges">
+                                                                <span class="badge bg-primary">{{ class.course.credit_units }} Credits</span>
+                                                                <span class="badge bg-secondary">{{ class.department.code }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% if not timetable|dictsort:"day"|length %}
+                                            <div class="no-classes">
+                                                <i class="fas fa-calendar-times text-muted"></i>
+                                                <p class="text-muted">No classes scheduled</p>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Summary -->
+                        <div class="timetable-summary mt-4">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="summary-card text-center">
+                                        <div class="summary-number">{{ timetable|length }}</div>
+                                        <div class="summary-label">Total Classes</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="summary-card text-center">
+                                        <div class="summary-number">{{ timetable|dictsort:"course"|length }}</div>
+                                        <div class="summary-label">Unique Courses</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="summary-card text-center">
+                                        <div class="summary-number">{{ timetable|dictsort:"course.lecturer"|length }}</div>
+                                        <div class="summary-label">Lecturers</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="summary-card text-center">
+                                        <div class="summary-number">{{ student.level.level_number }}</div>
+                                        <div class="summary-label">Current Level</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No timetable available</h5>
+                            <p class="text-muted">Your timetable will be available once courses are scheduled.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-center mt-4">
+                <button onclick="printPage()" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-print me-2"></i>Print Timetable
+                </button>
+                <a href="{% url 'student_dashboard' %}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header {
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 1rem;
+}
+
+.day-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.timetable-card {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--accent-color);
+    transition: all 0.3s ease;
+}
+
+.timetable-card:hover {
+    background: white;
+    box-shadow: var(--shadow);
+    transform: translateX(5px);
+}
+
+.time-slot {
+    text-align: center;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.course-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-color);
+}
+
+.course-code {
+    font-weight: 500;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+
+.lecturer-name {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-bottom: 0;
+}
+
+.course-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.no-classes {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+}
+
+.summary-card {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+    background: white;
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+}
+
+.summary-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.summary-label {
+    font-weight: 500;
+    color: #6b7280;
+}
+
+@media (max-width: 768px) {
+    .timetable-card .row {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .course-badges {
+        margin-top: 1rem;
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %} 

@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance History{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="page-header mb-4">
+                <h2 class="text-gradient">
+                    <i class="fas fa-history me-2"></i>
+                    Attendance History
+                </h2>
+                <p class="text-muted">View your complete attendance records</p>
+            </div>
+
+            <!-- Student Info Card -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-user-graduate me-2"></i>Student Information</h5>
+                            <p><strong>Name:</strong> {{ student.user.get_full_name }}</p>
+                            <p><strong>Matric Number:</strong> {{ student.matric_number }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Department:</strong> {{ student.department.name }}</p>
+                            <p><strong>Level:</strong> {{ student.level.name }}</p>
+                            <p><strong>Total Records:</strong> {{ attendance_records|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Records -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Attendance Records
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if attendance_records %}
+                        <div class="table-responsive">
+                            <table class="table table-hover attendance-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Course</th>
+                                        <th>Course Code</th>
+                                        <th>Lecturer</th>
+                                        <th>Status</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in attendance_records %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ record.date|date:"M d, Y" }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ record.date|date:"l" }}</small>
+                                            </td>
+                                            <td>{{ record.course.title }}</td>
+                                            <td>
+                                                <span class="badge bg-primary">{{ record.course.code }}</span>
+                                            </td>
+                                            <td>{{ record.marked_by.user.get_full_name }}</td>
+                                            <td>
+                                                {% if record.status == 'present' %}
+                                                    <span class="badge badge-present">Present</span>
+                                                {% elif record.status == 'absent' %}
+                                                    <span class="badge badge-absent">Absent</span>
+                                                {% elif record.status == 'late' %}
+                                                    <span class="badge badge-late">Late</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ record.marked_at|date:"H:i" }}
+                                                </small>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Statistics -->
+                        <div class="row mt-4">
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <div class="stat-number text-success">{{ attendance_records|length }}</div>
+                                    <div class="stat-label">Total Records</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <div class="stat-number text-primary">
+                                        {{ attendance_records|dictsort:"status"|length|add:"0" }}
+                                    </div>
+                                    <div class="stat-label">Present</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <div class="stat-number text-danger">
+                                        {{ attendance_records|dictsort:"status"|length|add:"0" }}
+                                    </div>
+                                    <div class="stat-label">Absent</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card text-center">
+                                    <div class="stat-number text-warning">
+                                        {{ attendance_records|dictsort:"status"|length|add:"0" }}
+                                    </div>
+                                    <div class="stat-label">Late</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No attendance records found</h5>
+                            <p class="text-muted">Your attendance records will appear here once marked by lecturers.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="text-center mt-4">
+                <button onclick="printPage()" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-print me-2"></i>Print Records
+                </button>
+                <a href="{% url 'student_dashboard' %}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header {
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 1rem;
+}
+
+.attendance-table th {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 1rem;
+}
+
+.attendance-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.attendance-table tr:hover {
+    background-color: #f8fafc;
+}
+
+.stat-card {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    background: white;
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.badge-present {
+    background: linear-gradient(135deg, var(--success-color), #059669);
+    color: white;
+}
+
+.badge-absent {
+    background: linear-gradient(135deg, var(--danger-color), #dc2626);
+    color: white;
+}
+
+.badge-late {
+    background: linear-gradient(135deg, var(--warning-color), #d97706);
+    color: white;
+}
+</style>
+{% endblock %} 

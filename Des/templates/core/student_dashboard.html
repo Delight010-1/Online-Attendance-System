@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="welcome-card bg-gradient text-white p-4 rounded-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="fas fa-user-graduate me-2"></i>
+                            Welcome, {{ student.user.get_full_name }}!
+                        </h2>
+                        <p class="mb-0">
+                            <strong>Matric Number:</strong> {{ student.matric_number }} | 
+                            <strong>Department:</strong> {{ student.department.name }} | 
+                            <strong>Level:</strong> {{ student.level.name }}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div id="current-time" class="h5">
+                            <i class="fas fa-clock me-2"></i>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-check-circle text-success"></i>
+                </div>
+                <div class="number">{{ attendance_records|length }}</div>
+                <div class="label">Total Attendance Records</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-calendar-alt text-primary"></i>
+                </div>
+                <div class="number">{{ today_timetable|length }}</div>
+                <div class="label">Today's Classes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-qrcode text-warning"></i>
+                </div>
+                <div class="number">{{ student.student_id }}</div>
+                <div class="label">Student ID</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-book text-info"></i>
+                </div>
+                <div class="number">{{ student.level.level_number }}</div>
+                <div class="label">Current Level</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Today's Timetable -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        Today's Timetable
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if today_timetable %}
+                        {% for timetable in today_timetable %}
+                            <div class="timetable-card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <div class="timetable-time">
+                                            {{ timetable.start_time|time:"H:i" }} - {{ timetable.end_time|time:"H:i" }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="timetable-course">
+                                            {{ timetable.course.code }} - {{ timetable.course.title }}
+                                        </div>
+                                        <div class="timetable-lecturer">
+                                            <i class="fas fa-chalkboard-teacher me-1"></i>
+                                            {{ timetable.course.lecturer.user.get_full_name }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                        <span class="badge bg-primary">{{ timetable.course.credit_units }} Credits</span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No classes scheduled for today</h5>
+                            <p class="text-muted">Enjoy your free time!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="{% url 'student_qr_code' %}" class="btn btn-primary">
+                            <i class="fas fa-qrcode me-2"></i>
+                            View My QR Code
+                        </a>
+                        <a href="{% url 'attendance_history' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-history me-2"></i>
+                            Attendance History
+                        </a>
+                        <a href="{% url 'timetable_view' %}" class="btn btn-outline-success">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            Full Timetable
+                        </a>
+                        <button onclick="downloadQRCode()" class="btn btn-outline-warning">
+                            <i class="fas fa-download me-2"></i>
+                            Download QR Code
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Attendance -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock me-2"></i>
+                        Recent Attendance
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if attendance_records %}
+                        {% for record in attendance_records|slice:":5" %}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong>{{ record.course.code }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ record.date|date:"M d, Y" }}</small>
+                                </div>
+                                <span class="badge badge-{{ record.status }}">
+                                    {{ record.status|title }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'attendance_history' %}" class="btn btn-sm btn-outline-primary">
+                                View All Records
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No attendance records yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.welcome-card {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    box-shadow: var(--shadow-lg);
+}
+
+.timetable-card {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.timetable-card:hover {
+    background: white;
+    box-shadow: var(--shadow);
+    transform: translateX(5px);
+}
+
+.timetable-time {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.timetable-course {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.timetable-lecturer {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+</style>
+{% endblock %} 

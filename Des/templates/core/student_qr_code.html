@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}My QR Code{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Page Header -->
+            <div class="text-center mb-4">
+                <h2 class="text-gradient">
+                    <i class="fas fa-qrcode me-2"></i>
+                    My QR Code
+                </h2>
+                <p class="text-muted">Show this QR code to your lecturer for attendance marking</p>
+            </div>
+
+            <!-- QR Code Container -->
+            <div class="qr-container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <!-- Student Information -->
+                        <div class="student-info mb-4">
+                            <h4 class="mb-3">
+                                <i class="fas fa-user-graduate me-2"></i>
+                                Student Information
+                            </h4>
+                            <div class="info-item">
+                                <strong>Name:</strong> {{ student.user.get_full_name }}
+                            </div>
+                            <div class="info-item">
+                                <strong>Matric Number:</strong> {{ student.matric_number }}
+                            </div>
+                            <div class="info-item">
+                                <strong>Student ID:</strong> {{ student.student_id }}
+                            </div>
+                            <div class="info-item">
+                                <strong>Department:</strong> {{ student.department.name }}
+                            </div>
+                            <div class="info-item">
+                                <strong>Level:</strong> {{ student.level.name }}
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="instructions">
+                            <h5 class="mb-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                How to Use
+                            </h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    Display this QR code to your lecturer during class
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    Lecturer will scan it to mark your attendance
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>
+                                    You can also download and print the QR code
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    Keep your QR code private and don't share it
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <!-- QR Code Display -->
+                        <div class="qr-code-display text-center">
+                            {% if student.qr_code %}
+                                <div class="qr-code mb-3">
+                                    <img src="{{ student.qr_code.url }}" alt="QR Code" class="img-fluid" style="max-width: 250px;">
+                                </div>
+                                <div class="qr-code-info">
+                                    <p class="text-muted mb-2">
+                                        <strong>QR Code Data:</strong><br>
+                                        <code>{{ student.student_id }} - {{ student.matric_number }}</code>
+                                    </p>
+                                </div>
+                            {% else %}
+                                <div class="qr-code-placeholder">
+                                    <i class="fas fa-qrcode fa-5x text-muted mb-3"></i>
+                                    <p class="text-muted">QR Code not generated</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="text-center mt-4">
+                            {% if student.qr_code %}
+                                <button onclick="downloadQRCode()" class="btn btn-primary me-2">
+                                    <i class="fas fa-download me-2"></i>
+                                    Download QR Code
+                                </button>
+                                <button onclick="printQRCode()" class="btn btn-outline-primary">
+                                    <i class="fas fa-print me-2"></i>
+                                    Print QR Code
+                                </button>
+                            {% else %}
+                                <button class="btn btn-warning" disabled>
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    QR Code Not Available
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-shield-alt me-2"></i>
+                                Security Notice
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <strong>Important:</strong> Your QR code is unique to you and should be kept secure.
+                            </p>
+                            <ul class="list-unstyled mb-0">
+                                <li><i class="fas fa-times text-danger me-2"></i>Don't share with other students</li>
+                                <li><i class="fas fa-times text-danger me-2"></i>Don't post on social media</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Keep it private and secure</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-question-circle me-2"></i>
+                                Need Help?
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">If you have issues with your QR code:</p>
+                            <ul class="list-unstyled mb-0">
+                                <li><i class="fas fa-envelope me-2"></i>Contact your department</li>
+                                <li><i class="fas fa-phone me-2"></i>Call IT support</li>
+                                <li><i class="fas fa-user-shield me-2"></i>Visit admin office</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.qr-container {
+    background: white;
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.student-info {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.info-item {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.instructions {
+    background: #f0f9ff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.qr-code-display {
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 10px;
+    border: 2px dashed var(--border-color);
+}
+
+.qr-code {
+    background: white;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+}
+
+.qr-code-placeholder {
+    padding: 3rem 1rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 2px dashed var(--border-color);
+}
+
+.qr-code-info code {
+    background: #f1f5f9;
+    padding: 0.5rem;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+function downloadQRCode() {
+    const qrImage = document.querySelector('.qr-code img');
+    if (qrImage) {
+        const link = document.createElement('a');
+        link.download = `qr-code-${student.student_id}.png`;
+        link.href = qrImage.src;
+        link.click();
+    }
+}
+
+function printQRCode() {
+    const printWindow = window.open('', '_blank');
+    const qrImage = document.querySelector('.qr-code img');
+    
+    if (qrImage) {
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>QR Code - ${student.student_id}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 2rem; }
+                        .qr-container { max-width: 400px; margin: 0 auto; }
+                        .qr-code { border: 2px solid #000; padding: 1rem; display: inline-block; }
+                        .info { margin-top: 1rem; }
+                    </style>
+                </head>
+                <body>
+                    <div class="qr-container">
+                        <h2>Student QR Code</h2>
+                        <div class="qr-code">
+                            <img src="${qrImage.src}" alt="QR Code" style="max-width: 200px;">
+                        </div>
+                        <div class="info">
+                            <p><strong>Name:</strong> ${student.user.get_full_name}</p>
+                            <p><strong>Student ID:</strong> ${student.student_id}</p>
+                            <p><strong>Matric Number:</strong> ${student.matric_number}</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+}
+</script>
+{% endblock %} 

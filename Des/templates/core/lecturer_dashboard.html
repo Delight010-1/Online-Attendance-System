@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+
+{% block title %}Lecturer Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="welcome-card bg-gradient text-white p-4 rounded-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="fas fa-chalkboard-teacher me-2"></i>
+                            Welcome, {{ lecturer.user.get_full_name }}!
+                        </h2>
+                        <p class="mb-0">
+                            <strong>Employee ID:</strong> {{ lecturer.employee_id }} | 
+                            <strong>Department:</strong> {{ lecturer.department.name }}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div id="current-time" class="h5">
+                            <i class="fas fa-clock me-2"></i>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-book text-primary"></i>
+                </div>
+                <div class="number">{{ courses|length }}</div>
+                <div class="label">Assigned Courses</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-calendar-day text-success"></i>
+                </div>
+                <div class="number">{{ today_courses|length }}</div>
+                <div class="label">Today's Classes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-users text-warning"></i>
+                </div>
+                <div class="number">{{ lecturer.department.name }}</div>
+                <div class="label">Department</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card text-center">
+                <div class="icon">
+                    <i class="fas fa-qrcode text-info"></i>
+                </div>
+                <div class="number">QR Scanner</div>
+                <div class="label">Ready to Use</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row">
+        <!-- Today's Schedule -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        Today's Schedule
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if today_courses %}
+                        {% for timetable in today_courses %}
+                            <div class="schedule-card">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <div class="schedule-time">
+                                            {{ timetable.start_time|time:"H:i" }} - {{ timetable.end_time|time:"H:i" }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="schedule-course">
+                                            {{ timetable.course.code }} - {{ timetable.course.title }}
+                                        </div>
+                                        <div class="schedule-details">
+                                            <span class="badge bg-primary me-2">{{ timetable.department.code }}</span>
+                                            <span class="badge bg-secondary me-2">Level {{ timetable.level.level_number }}</span>
+                                            <span class="badge bg-info">{{ timetable.course.credit_units }} Credits</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                        <a href="{% url 'mark_attendance' timetable.course.id %}" class="btn btn-primary btn-sm me-2">
+                                            <i class="fas fa-check me-1"></i>Mark Attendance
+                                        </a>
+                                        <a href="{% url 'qr_scanner' timetable.course.id %}" class="btn btn-success btn-sm">
+                                            <i class="fas fa-qrcode me-1"></i>QR Scan
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No classes scheduled for today</h5>
+                            <p class="text-muted">Enjoy your free time!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>
+                        Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-3">
+                        <a href="#" class="btn btn-primary" onclick="showCourseSelector()">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Mark Attendance
+                        </a>
+                        <a href="#" class="btn btn-success" onclick="showQRScanner()">
+                            <i class="fas fa-qrcode me-2"></i>
+                            QR Code Scanner
+                        </a>
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            View Reports
+                        </a>
+                        <a href="#" class="btn btn-outline-info">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            My Schedule
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned Courses -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-book me-2"></i>
+                        My Courses
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if courses %}
+                        {% for course in courses %}
+                            <div class="course-item mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>{{ course.code }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ course.title }}</small>
+                                        <br>
+                                        <span class="badge bg-primary">{{ course.department.code }}</span>
+                                        <span class="badge bg-secondary">Level {{ course.level.level_number }}</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <a href="{% url 'mark_attendance' course.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-book fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No courses assigned yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Course Selector Modal -->
+<div class="modal fade" id="courseSelectorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-book me-2"></i>
+                    Select Course
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if courses %}
+                    <div class="list-group">
+                        {% for course in courses %}
+                            <a href="{% url 'mark_attendance' course.id %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ course.code }}</h6>
+                                    <small class="text-muted">{{ course.credit_units }} Credits</small>
+                                </div>
+                                <p class="mb-1">{{ course.title }}</p>
+                                <small class="text-muted">{{ course.department.name }} - Level {{ course.level.level_number }}</small>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No courses assigned</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.welcome-card {
+    background: linear-gradient(135deg, var(--success-color), #059669);
+    box-shadow: var(--shadow-lg);
+}
+
+.schedule-card {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--success-color);
+    transition: all 0.3s ease;
+}
+
+.schedule-card:hover {
+    background: white;
+    box-shadow: var(--shadow);
+    transform: translateX(5px);
+}
+
+.schedule-time {
+    font-weight: 600;
+    color: var(--success-color);
+    font-size: 1.1rem;
+}
+
+.schedule-course {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-details {
+    margin-top: 0.5rem;
+}
+
+.course-item {
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.course-item:hover {
+    background: white;
+    box-shadow: var(--shadow);
+}
+</style>
+
+<script>
+function showCourseSelector() {
+    const modal = new bootstrap.Modal(document.getElementById('courseSelectorModal'));
+    modal.show();
+}
+
+function showQRScanner() {
+    if ({{ courses|length }} > 0) {
+        // Redirect to QR scanner for the first course (or show course selector)
+        showCourseSelector();
+    } else {
+        alert('No courses assigned to scan QR codes.');
+    }
+}
+</script>
+{% endblock %} 
