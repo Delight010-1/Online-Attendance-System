@@ -155,6 +155,9 @@ def super_admin_dashboard(request):
     total_courses = Course.objects.count()
     total_attendance = Attendance.objects.count()
     total_admins = Admin.objects.count()
+    total_departments = Department.objects.count()
+    total_levels = Level.objects.count()
+    today_attendance = Attendance.objects.filter(date=date.today()).count()
     
     context = {
         'admin': admin,
@@ -163,6 +166,9 @@ def super_admin_dashboard(request):
         'total_courses': total_courses,
         'total_attendance': total_attendance,
         'total_admins': total_admins,
+        'total_departments': total_departments,
+        'total_levels': total_levels,
+        'today_attendance': today_attendance,
     }
     return render(request, 'core/super_admin_dashboard.html', context)
 
@@ -405,8 +411,18 @@ def manage_lecturers(request):
 @login_required
 @user_passes_test(is_super_admin)
 def manage_admins(request):
+    if request.method == 'POST':
+        form = AdminForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Administrator added successfully!')
+            return redirect('manage_admins')
+    else:
+        form = AdminForm()
+    
     admins = Admin.objects.all().order_by('user__first_name')
     context = {
+        'form': form,
         'admins': admins,
     }
     return render(request, 'core/manage_admins.html', context)
@@ -419,6 +435,7 @@ def attendance_reports(request):
     course_id = request.GET.get('course')
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
+    status_filter = request.GET.get('status')
     
     attendance_records = Attendance.objects.all()
     
@@ -432,6 +449,14 @@ def attendance_reports(request):
         attendance_records = attendance_records.filter(date__gte=date_from)
     if date_to:
         attendance_records = attendance_records.filter(date__lte=date_to)
+    if status_filter:
+        attendance_records = attendance_records.filter(status=status_filter)
+    
+    # Calculate statistics
+    total_records = attendance_records.count()
+    present_count = attendance_records.filter(status='present').count()
+    absent_count = attendance_records.filter(status='absent').count()
+    late_count = attendance_records.filter(status='late').count()
     
     attendance_records = attendance_records.order_by('-date', 'course__code')
     
@@ -444,12 +469,20 @@ def attendance_reports(request):
         'departments': departments,
         'levels': levels,
         'courses': courses,
+        'total_records': total_records,
+        'present_count': present_count,
+        'absent_count': absent_count,
+        'late_count': late_count,
         'filters': {
             'department_id': department_id,
             'level_id': level_id,
             'course_id': course_id,
             'date_from': date_from,
             'date_to': date_to,
+            'status': status_filter,
         }
     }
     return render(request, 'core/attendance_reports.html', context)
+
+def login_portal(request):
+    return render(request, 'core/login_portal.html')
